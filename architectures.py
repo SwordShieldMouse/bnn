@@ -7,6 +7,8 @@ import torch.nn as nn
 import torchvision
 import pyro.optim
 
+from torch.distributions import constraints
+
 pyro.enable_validation(True)
 pyro.distributions.enable_validation(False)
 
@@ -24,12 +26,18 @@ class Net(nn.Module):
         for i in range(len(sizes) - 1):
             self.layers.append(nn.Linear(sizes[i], sizes[i + 1]))
 
+        self.test = nn.Linear(784, 50)
+
     def forward(self, x):
-        out = self.leaky_relu(self.layers[0](x))
-        if len(self.layers) > 1:
-            for i in range(1, len(self.layers) - 1):
-                out = self.leaky_relu(self.layers[i](out))
-        return self.logsoftmax(self.layers[len(self.layers) - 1](out))
+        #print("starting forward")
+        out = x
+        for i in range(len(self.layers) - 1):
+            #print("layer {}".format(i))
+            #print(out.shape)
+            out = self.leaky_relu(self.layers[i](out))
+            #print(self.layers[i])
+            #print(out.shape)
+        return self.logsoftmax(self.layers[-1](out))
 
 class BNN(nn.Module):
     def __init__(self, sizes):
@@ -42,26 +50,42 @@ class BNN(nn.Module):
         priors = {}
         for i in range(len(self.net.layers)):
             # assume priors are normal, but could change
-            w_prior = dist.Normal(loc = torch.zeros_like(self.net.layers[i].weight), scale = torch.ones_like(self.net.layers[i].weight))
-            b_prior = dist.Normal(loc = torch.zeros_like(self.net.layers[i].bias), scale = torch.ones_like(self.net.layers[i].bias))
+            w_size =  list(self.net.layers[i].weight.shape)
+            b_size =  list(self.net.layers[i].bias.shape)
+            #print(w_size)
+            w_prior = dist.Normal(loc = torch.zeros(w_size), scale = torch.ones(w_size)).to_event(2)
+            #print("batch dim is {}".format(w_prior.batch_shape))
+            b_prior = dist.Normal(loc = torch.zeros(b_size), scale = torch.ones(b_size)).to_event(1)
             priors['layers.{}.weight'.format(i)] = w_prior
             priors['layers.{}.bias'.format(i)] = b_prior
 
+        #print(x)
+        #print(priors)
         lifted_net = pyro.random_module("module", self.net, priors)
         lifted_model = lifted_net()
+        #print(y)
         with pyro.plate("map", x.shape[0]):
             probs = lifted_model(x)
-            pyro.sample("obs", dist.Categorical(logits = probs).to_event(1), obs = y)
+            #print(probs)
+            pyro.sample("obs", dist.Categorical(logits = probs), obs = y)
 
     def guide(self, x, y):
         priors = {}
         for i in range(len(self.net.layers)):
-            w_loc = pyro.param("w{}_loc".format(i), torch.randn_like(self.net.layers[i].weight))
-            w_scale = pyro.param("w{}_scale".format(i), torch.randn_like(self.net.layers[i].weight))
-            b_loc = pyro.param("b{}_loc".format(i), torch.randn_like(self.net.layers[i].bias))
-            b_scale = pyro.param("b{}_scale".format(i), torch.randn_like(self.net.layers[i].bias))
-            w_prior = dist.Normal(loc = w_loc, scale = w_scale)
-            b_prior = dist.Normal(loc = b_loc, scale = b_scale)
+            w_size = list(self.net.layers[i].weight.shape)
+            b_size = list(self.net.layers[i].bias.shape)
+
+            w_loc = pyro.param("w{}_loc".format(i), torch.randn(w_size))
+            w_scale = pyro.param("w{}_scale".format(i), torch.exp(torch.randn(w_size)))#, constraint = constraints.positive)
+            b_loc = pyro.param("b{}_loc".format(i), torch.randn(b_size))
+            b_scale = pyro.param("b{}_scale".format(i), torch.exp(torch.randn(b_size)))# constraint = constraints.positive)
+
+            w_prior = dist.Normal(loc = w_loc, scale = w_scale).to_event(2)#.to_event(1)
+            #print("batch dim is {}".format(w_prior.batch_shape))
+            b_prior = dist.Normal(loc = b_loc, scale = b_scale).to_event(1)#.to_event(1)
+
             priors['layers.{}.weight'.format(i)] = w_prior
             priors['layers.{}.bias'.format(i)] = b_prior
+        #with pyro.plate("map", x.shape[0]):
         lifted_net = pyro.random_module("module", self.net, priors)
+        return lifted_net()
