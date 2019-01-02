@@ -18,6 +18,7 @@ class Net(nn.Module):
     # last value of sizes is the output size
     def __init__(self, sizes):
         super(Net, self).__init__()
+        # try convolutional architecture as well
 
         self.layers = nn.ModuleList()
         self.logsoftmax = nn.LogSoftmax(dim = 1)
@@ -26,7 +27,7 @@ class Net(nn.Module):
         for i in range(len(sizes) - 1):
             self.layers.append(nn.Linear(sizes[i], sizes[i + 1]))
 
-        self.test = nn.Linear(784, 50)
+        self.test = nn.Linear(28 * 28, 50)
 
     def forward(self, x):
         #print("starting forward")
@@ -89,3 +90,10 @@ class BNN(nn.Module):
         #with pyro.plate("map", x.shape[0]):
         lifted_net = pyro.random_module("module", self.net, priors)
         return lifted_net()
+
+    def predict(self, x, num_samples = 1000):
+        posterior_models = [self.guide(None, None) for _ in range(num_samples)]
+        y_preds = [model(x).data for model in posterior_models]
+        means = torch.mean(torch.stack(y_preds), 0)
+        medians = np.percentile(torch.stack(y_preds).numpy(), 50, axis = 0)
+        return np.amax(means.numpy(), axis = 1), np.argmax(means.numpy(), axis = 1), np.amax(medians, axis = 1)
