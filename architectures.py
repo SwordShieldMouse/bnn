@@ -20,6 +20,16 @@ class Net(nn.Module):
         super(Net, self).__init__()
         # try convolutional architecture as well
 
+        self.conv_layers = nn.Sequential(
+            nn.Conv2d(1, 3, 5), # from 1 x 28 x 28 to 3 x 24 x 24
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2, stride = 2), # to 3 x 12 x 12
+            nn.Conv2d(3, 10, 3), # to 10 x 10 x 10
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2, 2), # to 10 x 5 x 5
+            nn.Conv2d(10, 10, 1) # for dimensionality reduction
+        )
+
         self.layers = nn.ModuleList()
         self.logsoftmax = nn.LogSoftmax(dim = 1)
         self.leaky_relu = nn.LeakyReLU()
@@ -27,11 +37,11 @@ class Net(nn.Module):
         for i in range(len(sizes) - 1):
             self.layers.append(nn.Linear(sizes[i], sizes[i + 1]))
 
-        self.test = nn.Linear(28 * 28, 50)
 
     def forward(self, x):
         #print("starting forward")
-        out = x
+        out = self.conv_layers(x)
+        out = out.view(-1, 10 * 5 * 5)
         for i in range(len(self.layers) - 1):
             #print("layer {}".format(i))
             #print(out.shape)
