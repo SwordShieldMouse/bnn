@@ -17,9 +17,9 @@ batch_size = 20
 train_loader = torch.utils.data.DataLoader(dataset = train_set, batch_size = batch_size, shuffle = True)
 test_loader = torch.utils.data.DataLoader(dataset = test_set, batch_size = batch_size, shuffle = True)
 
-model = BNN([10 * 5 * 5, 20, 30, 10]).to(device)
+model = BNN([7 * 7 * 7, 30, 10]).to(device)
 
-epochs = 10
+epochs = 5
 n_posterior_samples = 100
 optim = pyro.optim.Adam({"lr": 1e-3})
 svi = SVI(model.model, model.guide, optim, loss = Trace_ELBO())
@@ -43,6 +43,7 @@ print("training took {} seconds".format(t_end - t_start))
 print("starting evaluation")
 test_loss = 0
 total, correct = 0, 0
+p_thres = 0.4
 missed = 0 # count number of samples nn refuses to predict
 for ix, (x, y) in enumerate(test_loader):
     if ix % 100 == 0:
@@ -53,10 +54,10 @@ for ix, (x, y) in enumerate(test_loader):
     probs, predictions, medians = model.predict(x, num_samples = n_posterior_samples)
 
     # don't predict if median prob is < 0.5
-    missed += np.sum(medians < 0.5)
-    total += predictions.size - np.sum(medians < 0.5)
+    missed += np.sum(medians < p_thres)
+    total += predictions.size - np.sum(medians < p_thres)
 
-    correct += sum([i == j if medians[ix] >= 0.5 else 0 for ix, (i, j) in enumerate(zip(predictions, y))])
+    correct += sum([i == j if medians[ix] >= p_thres else 0 for ix, (i, j) in enumerate(zip(predictions, y))])
 print("test loss is {}".format(test_loss / len(test_loader.dataset)))
 print("accuracy is {}".format(correct / total))
 print("refused to predict {}".format(missed / len(test_loader.dataset)))

@@ -18,17 +18,55 @@ class Net(nn.Module):
     # last value of sizes is the output size
     def __init__(self, sizes):
         super(Net, self).__init__()
-        # try convolutional architecture as well
+
+        self.dense_size = 4 # size of dense block
+        self.dense_channel_size = 7
 
         self.conv_layers = nn.Sequential(
-            nn.Conv2d(1, 3, 5), # from 1 x 28 x 28 to 3 x 24 x 24
+            nn.Conv2d(1, 7, 3, padding = 1), # from 1 x 28 x 28 to 10 x 28 x 28
             nn.LeakyReLU(),
-            nn.MaxPool2d(2, stride = 2), # to 3 x 12 x 12
-            nn.Conv2d(3, 10, 3), # to 10 x 10 x 10
+            nn.Conv2d(7, 10, 3, padding = 1),
             nn.LeakyReLU(),
-            nn.MaxPool2d(2, 2), # to 10 x 5 x 5
-            nn.Conv2d(10, 10, 1) # for dimensionality reduction
+            nn.Conv2d(10, 7, 3, padding = 1),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2, stride = 2), # to 10 x 14 x 14
+            nn.Conv2d(7, 10, 3, padding = 1), # to 20 x 14 x 14
+            nn.LeakyReLU(),
+            nn.Conv2d(10, 10, 3, padding = 1),
+            nn.LeakyReLU(),
+            nn.Conv2d(10, 7, 3, padding = 1), # to 20 x 14 x 14
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2, stride = 2)#, # to 20 x 7 x 7
+            #nn.Conv2d(20, 20, 1), # for dimensionality reduction
         )
+
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(1, 7, 3, padding = 1),
+            nn.LeakyReLU(),
+            nn.Conv2d(7, 10, 3, padding = 1),
+            nn.LeakyReLU(),
+            nn.Conv2d(10, 7, 3, padding = 1),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(2, stride = 2)
+        )
+
+        self.down1 = nn.Conv2d(self.dense_channel_size * self.dense_size, self.dense_channel_size, 1)
+        self.pool = nn.MaxPool2d(2, stride = 2)
+
+        #self.dilated_conv_layers = nn.Sequential(
+        #    nn.Conv2d(1, 10, kernel_size = 5, padding = 2), # from 1 x 28 x 28 to 10 x 24 x 24
+        #    nn.LeakyReLU(),
+        #    nn.Conv2d(10, 10, kernel_size = 3, dilation = 2), # to 10 x
+        #)
+
+        self.dense_convs = nn.ModuleList()
+        #self.dense_convs.append(nn.Conv2d(self.dense_channel_size, self.dense_channel_size, 3, padding = 1))
+        #cumul_size = self.dense_channel_size
+        #prev_size = 0
+        for i in range(self.dense_size):
+            self.dense_convs.append(nn.Conv2d(self.dense_channel_size * (i + 1), self.dense_channel_size, 3, padding = 1))
+            #cumul_size += self.dense_channel_size * (i + 1)
+
 
         self.layers = nn.ModuleList()
         self.logsoftmax = nn.LogSoftmax(dim = 1)
@@ -39,16 +77,30 @@ class Net(nn.Module):
 
 
     def forward(self, x):
-        #print("starting forward")
-        out = self.conv_layers(x)
-        out = out.view(-1, 10 * 5 * 5)
+        # standard convolutional layers
+        #out = self.conv_layers(x)
+        #out = out.view(-1, 7 * 7 * 7)
+
+        out = self.conv1(x) # now of size 7 * 14 * 14
+        # dense block
+        out = self.dense_block(out)
+        out = self.pool(out) # now of size 7 * 7 * 7
+        out = out.view(-1, 7 * 7 * 7)
+
+        # fully-connected layers
         for i in range(len(self.layers) - 1):
-            #print("layer {}".format(i))
-            #print(out.shape)
             out = self.leaky_relu(self.layers[i](out))
-            #print(self.layers[i])
-            #print(out.shape)
+
         return self.logsoftmax(self.layers[-1](out))
+
+    def dense_block(self, x):
+        # implements a dense block from DenseNet
+        # concatenate tensors based on channel
+        xs = [x] # holds all the feature maps
+        for i in range(len(self.dense_convs)):
+            xs.append(torch.cat(xs, dim = 1))
+            xs[-1] = self.leaky_relu(self.dense_convs[i](xs[-1]))
+        return xs[-1]
 
 class BNN(nn.Module):
     def __init__(self, sizes):
