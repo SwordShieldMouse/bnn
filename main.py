@@ -18,7 +18,7 @@ test_loader = torch.utils.data.DataLoader(dataset = test_set, batch_size = batch
 
 model = BNN([7 * 7 * 7, 30, 10]).to(device)
 
-epochs = 5
+epochs = 20
 n_posterior_samples = 100
 optim = pyro.optim.Adam({"lr": 1e-3})
 svi = SVI(model.model, model.guide, optim, loss = Trace_ELBO())

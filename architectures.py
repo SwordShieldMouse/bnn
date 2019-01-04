@@ -189,6 +189,6 @@ class BNN(nn.Module):
     def predict(self, x, num_samples = 1000):
         posterior_models = [self.guide(None, None) for _ in range(num_samples)]
         y_preds = [model(x).data for model in posterior_models]
-        means = torch.mean(torch.stack(y_preds), 0)
-        medians = np.percentile(torch.stack(y_preds).numpy(), 50, axis = 0)
+        means = torch.mean(torch.stack(y_preds), 0),cpu()
+        medians = np.percentile(torch.stack(y_preds).cpu().numpy(), 50, axis = 0)
         return np.amax(means.numpy(), axis = 1), np.argmax(means.numpy(), axis = 1), np.amax(medians, axis = 1)
