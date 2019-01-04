@@ -4,7 +4,6 @@ from pyro.infer import SVI, Trace_ELBO
 from architectures import *
 import time
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 pyro.set_rng_seed(0)
 
 transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])

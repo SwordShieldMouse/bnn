@@ -9,6 +9,8 @@ import pyro.optim
 
 from torch.distributions import constraints
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 pyro.enable_validation(True)
 pyro.distributions.enable_validation(False)
 
