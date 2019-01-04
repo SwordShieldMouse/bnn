@@ -138,6 +138,7 @@ class BNN(nn.Module):
         self.sizes = sizes
 
         if torch.cuda.is_available():
+            print("cuda available")
             self.cuda()
 
     def model(self, x, y):
