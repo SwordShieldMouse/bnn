@@ -132,7 +132,7 @@ class BNN(nn.Module):
     def __init__(self, sizes):
         super(BNN, self).__init__()
 
-        self.net = Net(sizes)
+        self.net = Net(sizes).to(device)
         self.sizes = sizes
 
     def model(self, x, y):
