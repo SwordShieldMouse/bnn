@@ -137,6 +137,9 @@ class BNN(nn.Module):
         self.net = Net(sizes).to(device)
         self.sizes = sizes
 
+        if torch.cuda.is_available():
+            self.cuda()
+
     def model(self, x, y):
         priors = {}
         # add probability model for convolutional layers as well
