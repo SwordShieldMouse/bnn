@@ -138,7 +138,7 @@ class BNN(nn.Module):
         self.sizes = sizes
 
         if torch.cuda.is_available():
-            print("cuda available")
+            #print("cuda available")
             self.cuda()
 
     def model(self, x, y):
@@ -149,9 +149,9 @@ class BNN(nn.Module):
             w_size =  list(self.net.layers[i].weight.shape)
             b_size =  list(self.net.layers[i].bias.shape)
             #print(w_size)
-            w_prior = dist.Normal(loc = torch.zeros(w_size), scale = torch.ones(w_size)).to_event(2)
+            w_prior = dist.Normal(loc = torch.zeros(w_size, device = device), scale = torch.ones(w_size, device = device)).to_event(2)
             #print("batch dim is {}".format(w_prior.batch_shape))
-            b_prior = dist.Normal(loc = torch.zeros(b_size), scale = torch.ones(b_size)).to_event(1)
+            b_prior = dist.Normal(loc = torch.zeros(b_size, device = device), scale = torch.ones(b_size, device = device)).to_event(1)
             priors['layers.{}.weight'.format(i)] = w_prior
             priors['layers.{}.bias'.format(i)] = b_prior
 
@@ -171,10 +171,10 @@ class BNN(nn.Module):
             w_size = list(self.net.layers[i].weight.shape)
             b_size = list(self.net.layers[i].bias.shape)
 
-            w_loc = pyro.param("w{}_loc".format(i), torch.randn(w_size))
-            w_scale = pyro.param("w{}_scale".format(i), torch.exp(torch.randn(w_size)))#, constraint = constraints.positive)
-            b_loc = pyro.param("b{}_loc".format(i), torch.randn(b_size))
-            b_scale = pyro.param("b{}_scale".format(i), torch.exp(torch.randn(b_size)))# constraint = constraints.positive)
+            w_loc = pyro.param("w{}_loc".format(i), torch.randn(w_size, device = device))
+            w_scale = pyro.param("w{}_scale".format(i), torch.exp(torch.randn(w_size, device = device)))#, constraint = constraints.positive)
+            b_loc = pyro.param("b{}_loc".format(i), torch.randn(b_size, device = device))
+            b_scale = pyro.param("b{}_scale".format(i), torch.exp(torch.randn(b_size, device = device)))# constraint = constraints.positive)
 
             w_prior = dist.Normal(loc = w_loc, scale = w_scale).to_event(2)#.to_event(1)
             #print("batch dim is {}".format(w_prior.batch_shape))
