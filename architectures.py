@@ -47,7 +47,8 @@ class Net(nn.Module):
             nn.LeakyReLU(),
             nn.Conv2d(10, 7, 3, padding = 1),
             nn.LeakyReLU(),
-            nn.MaxPool2d(2, stride = 2)
+            nn.FractionalMaxPool2d(2, output_size = (20, 20))
+            #nn.MaxPool2d(2, stride = 2)
         )
 
         self.conv2 = nn.Sequential(
@@ -55,7 +56,16 @@ class Net(nn.Module):
             nn.LeakyReLU(),
             nn.Conv2d(10, 7, 3, padding = 1),
             nn.LeakyReLU(),
-            nn.MaxPool2d(2, stride = 2)
+            nn.FractionalMaxPool2d(2, output_size = (12, 12))
+            #nn.MaxPool2d(2, stride = 2)
+        )
+
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(7, 10, 3, padding = 1),
+            nn.LeakyReLU(),
+            nn.Conv2d(10, 7, 3, padding = 1),
+            nn.LeakyReLU(),
+            nn.FractionalMaxPool2d(2, output_size = (7, 7))
         )
 
         #self.down1 = nn.Conv2d(self.dense_channel_size * self.dense_size, self.dense_channel_size, 1)
@@ -91,11 +101,13 @@ class Net(nn.Module):
         #out = self.conv_layers(x)
         #out = out.view(-1, 7 * 7 * 7)
 
+        # x is of size 1 x 28 x 28
         out = self.conv1(x) # now of size 7 * 14 * 14
         # dense block
         out = self.dense_block(out, self.dense_convs1)
         out = self.conv2(out)
         out = self.dense_block(out, self.dense_convs2)
+        out = self.conv3(out)
         #out = self.pool(out) # now of size 7 * 7 * 7
 
         # prepare for fully-connected layer
@@ -125,6 +137,7 @@ class BNN(nn.Module):
 
     def model(self, x, y):
         priors = {}
+        # add probability model for convolutional layers as well
         for i in range(len(self.net.layers)):
             # assume priors are normal, but could change
             w_size =  list(self.net.layers[i].weight.shape)

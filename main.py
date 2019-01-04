@@ -31,6 +31,7 @@ for epoch in range(epochs):
     epoch_loss = 0
     t_epoch_start = time.time()
     for ix, (x, y) in enumerate(train_loader):
+        x, y = x.to(device), y.to(device)
         if ix % 1000 == 0:
             print("mini-batch {} of {}".format(ix, len(train_loader.dataset) / batch_size))
         epoch_loss += svi.step(x, y)
@@ -46,6 +47,7 @@ total, correct = 0, 0
 p_thres = 0.4
 missed = 0 # count number of samples nn refuses to predict
 for ix, (x, y) in enumerate(test_loader):
+    x, y = x.to(device), y.to(device)
     if ix % 100 == 0:
         print("mini batch {} of {}".format(ix, len(test_loader.dataset) / batch_size))
     #print(svi.run(x.view(-1, 28 * 28), y))
